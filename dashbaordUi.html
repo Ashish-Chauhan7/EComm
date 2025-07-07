@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Dashboard</title>
+    <meta charset="UTF-8">
+    <script src="https://www.gstatic.com/firebasejs/10.5.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.5.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.5.2/firebase-firestore-compat.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js">
+    </script>
+    <script type="text/javascript">
+        (function () {
+            emailjs.init({
+                publicKey: "B6Pt-YjxGynjA3sXZ",
+            });
+        })();
+    </script>
+
+
+
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f8fc;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1,
+        h2 {
+            text-align: center;
+        }
+
+        #username {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+        }
+
+        .product-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .product-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            width: 250px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .product-card img {
+            width: 100%;
+            height: 150px;
+            object-fit: contain;
+            margin-bottom: 10px;
+        }
+
+        .quantity-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .quantity-controls button {
+            padding: 5px 10px;
+            font-size: 16px;
+            margin: 0 5px;
+        }
+
+        .total-price {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        .logout-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+
+    <button onclick="window.location.href='myorders.html'"
+        style="position:fixed; top:20px; left:20px; background:#007bff; color:white; border:none; padding:8px 12px; border-radius:5px; cursor:pointer;">
+        My Orders
+    </button>
+
+
+    <h1>Welcome to the Dashboard</h1>
+    <p id="username">Loading user...</p>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+
+    <div class="product-container">
+        <!-- Product 1 -->
+        <div class="product-card">
+            <img src="C:\Users\Ashish\Desktop\ECommWebsite\iphone.jpg" alt="Phone">
+            <h3>Smartphone</h3>
+            <p>Price: ₹15,000</p>
+            <div class="quantity-controls">
+                <button onclick="updateQty(0, -1)">−</button>
+                <span id="qty-0">0</span>
+                <button onclick="updateQty(0, 1)">+</button>
+            </div>
+            <div class="total-price" id="total-0">Total: ₹0</div>
+        </div>
+
+        <!-- Product 2 -->
+        <div class="product-card">
+            <img src="C:\Users\Ashish\Desktop\ECommWebsite\laptop.jpg" alt="Laptop">
+            <h3>Laptop</h3>
+            <p>Price: ₹55,000</p>
+            <div class="quantity-controls">
+                <button onclick="updateQty(1, -1)">−</button>
+                <span id="qty-1">0</span>
+                <button onclick="updateQty(1, 1)">+</button>
+            </div>
+            <div class="total-price" id="total-1">Total: ₹0</div>
+        </div>
+
+        <!-- Product 3 -->
+        <div class="product-card">
+            <img src="C:\Users\Ashish\Desktop\ECommWebsite\headphone.jpg" alt="Headphones">
+            <h3>Headphones</h3>
+            <p>Price: ₹2,000</p>
+            <div class="quantity-controls">
+                <button onclick="updateQty(2, -1)">−</button>
+                <span id="qty-2">0</span>
+                <button onclick="updateQty(2, 1)">+</button>
+            </div>
+            <div class="total-price" id="total-2">Total: ₹0</div>
+        </div>
+    </div>
+
+    <div style="text-align:center; margin-top: 30px;">
+        <h2>Total to Pay: ₹<span id="grand-total">0</span></h2>
+        <button onclick="placeOrder()" style="padding: 10px 20px; font-size: 16px;">Place Order</button>
+    </div>
+
+
+
+
+
+
+    <script>
+        // 🔧 Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyDfNUl-6TD4yH-BLVxfUDp3sNMd3HQrOJE",
+            authDomain: "ecomwebsite-d8698.firebaseapp.com",
+            projectId: "ecomwebsite-d8698",
+            storageBucket: "ecomwebsite-d8698.firebasestorage.app",
+            messagingSenderId: "73349105542",
+            appId: "1:73349105542:web:1f710914fb67578c480e07",
+            measurementId: "G-MRPSWCGH58"
+        };
+        firebase.initializeApp(firebaseConfig);
+
+        // ✅ Product data
+        const products = [
+            { name: "Smartphone", price: 15000, quantity: 0 },
+            { name: "Laptop", price: 55000, quantity: 0 },
+            { name: "Headphones", price: 2000, quantity: 0 }
+        ];
+
+        // 🔄 Update quantity
+        function updateQty(index, change) {
+            products[index].quantity += change;
+            if (products[index].quantity < 0) products[index].quantity = 0;
+
+            document.getElementById(`qty-${index}`).innerText = products[index].quantity;
+            const total = products[index].price * products[index].quantity;
+            document.getElementById(`total-${index}`).innerText = `Total: ₹${total}`;
+
+            updateGrandTotal();
+        }
+
+        function updateGrandTotal() {
+            const grandTotal = products.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            document.getElementById("grand-total").innerText = grandTotal;
+        }
+
+
+        // 👤 Show user's profile name
+        firebase.auth().onAuthStateChanged(user => {
+            if (!user) {
+                window.location.href = "index.html"; // redirect if not logged in
+            } else {
+                const name = user.displayName || "User";
+                document.getElementById("username").innerText = `Hello, ${name}!`;
+            }
+        });
+
+        // 🔓 Logout
+        function logout() {
+            firebase.auth().signOut().then(() => {
+                window.location.href = "userpage.html";
+            });
+        }
+        let selectedProducts = [];
+        let totalAmount = 0;
+
+        function placeOrder() {
+            const user = firebase.auth().currentUser;
+            if (!user) {
+                alert("Please login again.");
+                return;
+            }
+
+            selectedProducts = products.filter(p => p.quantity > 0);
+            if (selectedProducts.length === 0) {
+                alert("Please select at least one product.");
+                return;
+            }
+
+            totalAmount = selectedProducts.reduce((sum, p) => sum + (p.price * p.quantity), 0);
+
+            // ✅ Just show the payment form (do not place order here!)
+            document.getElementById("payment-modal").style.display = "flex";
+        }
+
+
+        async function confirmPayment() {
+            const user = firebase.auth().currentUser;
+            const card = document.getElementById("card-number").value.trim();
+            const expiry = document.getElementById("expiry").value.trim();
+            const cvv = document.getElementById("cvv").value.trim();
+
+            // 🚨 Validation
+            const cardRegex = /^\d{16}$/;
+            const expiryRegex = /^(0[1-9]|1[0-2])\/\d{2}$/;
+            const cvvRegex = /^\d{3}$/;
+
+            if (!card || !expiry || !cvv) {
+                alert("Please fill in all payment fields.");
+                return;
+            }
+
+            if (!cardRegex.test(card)) {
+                alert("Card number must be 16 digits.");
+                return;
+            }
+
+            if (!expiryRegex.test(expiry)) {
+                alert("Expiry must be in MM/YY format.");
+                return;
+            } else {
+                // Check if card is expired
+                const [month, year] = expiry.split("/").map(str => parseInt(str));
+                const now = new Date();
+                const currentYear = now.getFullYear() % 100; // Last 2 digits
+                const currentMonth = now.getMonth() + 1;
+
+                if (year < currentYear || (year === currentYear && month < currentMonth)) {
+                    alert("Card is expired.");
+                    return;
+                }
+            }
+
+            if (!cvvRegex.test(cvv)) {
+                alert("CVV must be 3 digits.");
+                return;
+            }
+
+            // ✅ Dummy Payment Success
+            document.getElementById("payment-modal").style.display = "none";
+            alert("✅ Dummy payment successful!");
+
+            const orderId = "ORD" + Date.now();
+            const productSummary = selectedProducts.map(p => `${p.name} (x${p.quantity})`).join(", ");
+
+            const orderData = {
+                orderId,
+                userId: user.uid,
+                userName: user.displayName || "Customer",
+                products: selectedProducts,
+                totalAmount,
+                createdAt: firebase.firestore.Timestamp.now()
+            };
+
+            try {
+                const db = firebase.firestore();
+                await db.collection("orders").add(orderData);
+
+                alert(`✅ Order placed successfully!\nOrder ID: ${orderId}`);
+
+                // ✉️ Send email
+                if (window.emailjs) {
+                    emailjs.send("service_1kfgqaw", "template_jhmlgdv", {
+                        order_id: orderId,
+                        user_name: user.displayName || "Customer",
+                        user_email: user.email || "test@example.com",
+                        total: `₹${totalAmount}`,
+                        product_summary: productSummary
+                    }).then(() => {
+                        console.log("📧 Email sent");
+                    }).catch(err => {
+                        console.error("❌ Email error:", err);
+                    });
+                }
+
+                // 🧹 Reset
+                products.forEach(p => p.quantity = 0);
+                for (let i = 0; i < products.length; i++) {
+                    document.getElementById(`qty-${i}`).innerText = "0";
+                    document.getElementById(`total-${i}`).innerText = "Total: ₹0";
+                }
+                updateGrandTotal();
+
+                // 🧽 Clear fields
+                document.getElementById("card-number").value = "";
+                document.getElementById("expiry").value = "";
+                document.getElementById("cvv").value = "";
+
+            } catch (err) {
+                console.error("❌ Failed to save order:", err);
+                alert("Something went wrong. Order was not placed.");
+            }
+        }
+
+
+
+
+
+
+    </script>
+    <!-- 🔐 Payment Modal -->
+    <div id="payment-modal"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); justify-content:center; align-items:center;">
+        <div style="background:white; padding:20px; border-radius:10px; width:300px;">
+            <h3>Enter Card Details</h3>
+            <label>Card Number</label>
+            <input type="text" id="card-number" style="width:100%; margin-bottom:10px;"
+                placeholder="1234 5678 9012 3456">
+
+            <label>Expiry (MM/YY)</label>
+            <input type="text" id="expiry" style="width:100%; margin-bottom:10px;" placeholder="12/25">
+
+            <label>CVV</label>
+            <input type="password" id="cvv" style="width:100%; margin-bottom:15px;" placeholder="123">
+
+            <button onclick="confirmPayment()"
+                style="width:100%; background:#28a745; color:white; padding:10px; border:none; border-radius:5px;">Pay
+                Now</button>
+        </div>
+    </div>
+
+</body>
+
+</html>
